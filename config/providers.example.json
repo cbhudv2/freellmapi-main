@@ -1,21 +1,61 @@
 [
   {
-    "platform": "groq",
-    "label": "main",
-    "key": "gsk_replace_me",
+    "platform": "zhipu",
+    "label": "zai-global-main",
+    "key": "replace_with_zai_api_key",
+    "enabled": true
+  },
+  {
+    "platform": "mistral",
+    "label": "mistral-main",
+    "key": "replace_with_mistral_api_key",
+    "enabled": true
+  },
+  {
+    "platform": "nvidia",
+    "label": "nvidia-nim-main",
+    "key": "replace_with_nvidia_nim_api_key",
+    "enabled": true
+  },
+  {
+    "platform": "cerebras",
+    "label": "cerebras-main",
+    "key": "replace_with_cerebras_api_key",
+    "enabled": true
+  },
+  {
+    "platform": "cloudflare",
+    "label": "cloudflare-workers-ai-main",
+    "key": "replace_with_cloudflare_account_id:replace_with_cloudflare_api_token",
+    "enabled": true
+  },
+  {
+    "platform": "opencode",
+    "label": "opencode-zen-main",
+    "key": "replace_with_opencode_zen_api_key",
     "enabled": true
   },
   {
     "platform": "custom",
-    "label": "private-endpoint",
+    "label": "example-private-openai-compatible-server",
     "baseUrl": "http://model-server:8000/v1",
-    "key": "optional",
+    "key": "replace_if_the_private_server_requires_a_key",
     "enabled": true,
     "models": [
       {
-        "id": "model-id",
+        "id": "my-private-chat-model",
+        "displayName": "My Private Chat Model",
+        "contextWindow": 131072,
         "supportsTools": true,
         "supportsVision": false
+      },
+      {
+        "id": "my-private-vision-model",
+        "displayName": "My Private Vision Model",
+        "contextWindow": 65536,
+        "supportsTools": false,
+        "supportsVision": true,
+        "fallbackEnabled": true
       }
     ]
   }

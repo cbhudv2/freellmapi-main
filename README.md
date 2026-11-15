@@ -26,6 +26,13 @@ startup validates it completely, updates listed keys, and revokes previously
 managed keys that were removed. Provider keys are encrypted in SQLite with
 `ENCRYPTION_KEY`.
 
+Built-in entries contain credentials only. Their models come from the router's
+catalog and are visible through `GET /v1/models`; do not add a `models` field to
+a built-in entry. Explicit `models` are required only when `platform` is
+`custom`. Important platform IDs include `zhipu` for Z.AI and `opencode` for
+OpenCode Zen. Cloudflare keys use the single string format
+`account_id:api_token`.
+
 Production stores the JSON in the GitHub Environment secret
 `PROVIDER_KEYS_JSON`. No provider credential is used during image builds or
 stored in an image layer.
