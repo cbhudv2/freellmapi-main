@@ -23,7 +23,7 @@ services:
       - "127.0.0.1:3001:3001"
     volumes:
       - llmapi-data:/app/data
-      - ./backups:/app/backups
+      - llmapi-backups:/app/backups
       - ./secrets/providers.json:/run/secrets/providers.json:ro
     networks:
       llm-internal:
@@ -51,3 +51,5 @@ networks:
 volumes:
   llmapi-data:
     name: llmapi-data
+  llmapi-backups:
+    name: llmapi-backups

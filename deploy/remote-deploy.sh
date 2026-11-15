@@ -25,12 +25,16 @@ if ! mkdir .deploy-lock 2>/dev/null; then
 fi
 trap 'rmdir .deploy-lock 2>/dev/null || true' EXIT
 
-mkdir -p backups secrets
-chmod 700 backups secrets
+mkdir -p secrets
+chmod 700 secrets
 docker network inspect llm-internal >/dev/null 2>&1 || docker network create llm-internal >/dev/null
 
-if docker compose ps -q llmapi 2>/dev/null | grep -q .; then
-  docker compose exec -T llmapi node dist/scripts/backup-now.js
+if [[ -f .env ]]; then
+  existing_id="$(docker compose ps -q llmapi 2>/dev/null || true)"
+  if [[ -n "$existing_id" ]] \
+    && [[ "$(docker inspect -f '{{.State.Status}}' "$existing_id" 2>/dev/null || true)" == "running" ]]; then
+    docker compose exec -T llmapi node dist/scripts/backup-now.js
+  fi
 fi
 
 had_env=0
@@ -43,17 +47,25 @@ had_providers=0
 [[ -f .env.next ]] && mv .env.next .env
 [[ -f secrets/runtime.env.next ]] && mv secrets/runtime.env.next secrets/runtime.env
 [[ -f secrets/providers.json.next ]] && mv secrets/providers.json.next secrets/providers.json
-chmod 600 .env secrets/runtime.env secrets/providers.json
+chmod 600 .env secrets/runtime.env
+# The parent directory remains private on the host. The file is readable so
+# the unprivileged node user can access this read-only rootless bind mount.
+chmod 644 secrets/providers.json
 
 rollback() {
   echo "deployment failed; restoring previous image and configuration" >&2
-  if [[ "$had_env" -eq 1 ]]; then mv -f .env.rollback .env; else rm -f .env; fi
-  if [[ "$had_runtime" -eq 1 ]]; then mv -f secrets/runtime.env.rollback secrets/runtime.env; else rm -f secrets/runtime.env; fi
-  if [[ "$had_providers" -eq 1 ]]; then mv -f secrets/providers.json.rollback secrets/providers.json; else rm -f secrets/providers.json; fi
   if [[ "$had_env" -eq 1 && "$had_runtime" -eq 1 && "$had_providers" -eq 1 ]]; then
+    mv -f .env.rollback .env
+    mv -f secrets/runtime.env.rollback secrets/runtime.env
+    mv -f secrets/providers.json.rollback secrets/providers.json
     docker compose up -d --remove-orphans || true
   else
+    # Compose still needs the new .env to resolve the image while taking down
+    # a failed first deployment. Remove the uploaded configuration afterwards.
     docker compose down || true
+    if [[ "$had_env" -eq 1 ]]; then mv -f .env.rollback .env; else rm -f .env; fi
+    if [[ "$had_runtime" -eq 1 ]]; then mv -f secrets/runtime.env.rollback secrets/runtime.env; else rm -f secrets/runtime.env; fi
+    if [[ "$had_providers" -eq 1 ]]; then mv -f secrets/providers.json.rollback secrets/providers.json; else rm -f secrets/providers.json; fi
   fi
 }
 

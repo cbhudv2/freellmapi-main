@@ -84,9 +84,9 @@ snippet and request example for future applications.
 ## Persistence
 
 SQLite lives in the `llmapi-data` volume. Encrypted daily backups are retained
-for seven days and the latest three pre-deployment backups are retained under
-`/srv/apps/llmapi/backups`. Copy backups off the VPS separately when the data
-becomes important.
+for seven days and the latest three pre-deployment backups are retained in the
+rootless Docker volume `llmapi-backups`. Export that volume off the VPS
+separately when the data becomes important.
 
 Request metadata is retained for 30 days, capped at 100,000 rows. Client IPs,
 user agents, prompts, completions, response caches, and response-body

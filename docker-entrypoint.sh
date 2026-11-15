@@ -1,5 +1,6 @@
 #!/bin/sh
 set -e
+umask 0077
 
 # PaaS runtimes (Railway, Render, ...) bind-mount the persistent volume at
 # /app/data with root ownership, while the image runs as USER node.
