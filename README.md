@@ -71,6 +71,9 @@ The Compose stack publishes only `127.0.0.1:3001` and joins the external
 `llm-internal` network. Application containers should join that network and use
 `http://llmapi:3001`.
 
+See [`CLIENT_INTEGRATION.md`](CLIENT_INTEGRATION.md) for a reusable Compose
+snippet and request example for future applications.
+
 ## Persistence
 
 SQLite lives in the `llmapi-data` volume. Encrypted daily backups are retained
