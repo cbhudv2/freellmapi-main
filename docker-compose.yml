@@ -1,0 +1,53 @@
+name: llmapi
+
+services:
+  llmapi:
+    image: "${GHCR_IMAGE:?set GHCR_IMAGE}:${IMAGE_TAG:?set IMAGE_TAG}"
+    restart: unless-stopped
+    env_file:
+      - ./secrets/runtime.env
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      HOST: 0.0.0.0
+      FREEAPI_DB_PATH: /app/data/llmapi.db
+      PROVIDER_KEYS_FILE: /run/secrets/providers.json
+      LLMAPI_BACKUP_DIR: /app/backups
+      ALLOWED_HOSTS: localhost,llmapi
+      REQUEST_ANALYTICS_RETENTION_DAYS: 30
+      REQUEST_ANALYTICS_MAX_ROWS: 100000
+      REQUEST_ANALYTICS_LOG_CLIENT: "false"
+      RESPONSE_CACHE: "false"
+      RESPONSE_CACHE_PERSIST: "false"
+    ports:
+      - "127.0.0.1:3001:3001"
+    volumes:
+      - llmapi-data:/app/data
+      - ./backups:/app/backups
+      - ./secrets/providers.json:/run/secrets/providers.json:ro
+    networks:
+      llm-internal:
+        aliases: [llmapi]
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    cap_add: [CHOWN, SETUID, SETGID, DAC_OVERRIDE]
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/livez').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+networks:
+  llm-internal:
+    external: true
+    name: llm-internal
+
+volumes:
+  llmapi-data:
+    name: llmapi-data

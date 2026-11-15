@@ -25,6 +25,10 @@
     "node": ">=20.18.0 <25.0.0",
     "npm": ">=10.0.0"
   },
+  "allowScripts": {
+    "better-sqlite3@12.10.0": true,
+    "esbuild@0.28.2": true
+  },
   "dependencies": {
     "ajv": "^8.20.0",
     "better-sqlite3": "^12.10.0",

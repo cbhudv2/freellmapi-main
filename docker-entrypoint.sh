@@ -35,8 +35,7 @@ if [ "$(id -u)" = "0" ]; then
 
   ensure_owned /app/data
   ensure_owned /app/backups
-  # docker/README.md tells single-mount PaaS operators to point these at their
-  # one persistent directory, which may sit outside /app/server/data.
+  # Explicit paths may sit outside the built-in /app/data directory.
   if [ -n "$FREEAPI_DB_PATH" ]; then
     ensure_owned "$(dirname "$FREEAPI_DB_PATH")"
   fi

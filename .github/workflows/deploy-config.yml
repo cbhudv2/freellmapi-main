@@ -1,0 +1,53 @@
+name: Deploy configuration
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: llmapi-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    environment: production
+    env:
+      VPS_HOST: ${{ vars.VPS_HOST }}
+      VPS_USER: ${{ vars.VPS_USER }}
+      VPS_KNOWN_HOSTS: ${{ vars.VPS_KNOWN_HOSTS }}
+      SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+      PROVIDER_KEYS_JSON: ${{ secrets.PROVIDER_KEYS_JSON }}
+      ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+      DB_BACKUP_KEY: ${{ secrets.DB_BACKUP_KEY }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Prepare configuration
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          : "${VPS_HOST:?missing production variable VPS_HOST}"
+          : "${VPS_USER:?missing production variable VPS_USER}"
+          : "${VPS_KNOWN_HOSTS:?missing production variable VPS_KNOWN_HOSTS}"
+          : "${SSH_PRIVATE_KEY:?missing production secret VPS_SSH_PRIVATE_KEY}"
+          : "${PROVIDER_KEYS_JSON:?missing production secret PROVIDER_KEYS_JSON}"
+          : "${ENCRYPTION_KEY:?missing production secret ENCRYPTION_KEY}"
+          : "${DB_BACKUP_KEY:?missing production secret DB_BACKUP_KEY}"
+          umask 077
+          install -d -m 700 "$HOME/.ssh" .deploy-secrets
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          printf 'ENCRYPTION_KEY=%s\nFREEAPI_DB_BACKUP_KEY=%s\n' "$ENCRYPTION_KEY" "$DB_BACKUP_KEY" > .deploy-secrets/runtime.env.next
+          printf '%s' "$PROVIDER_KEYS_JSON" > .deploy-secrets/providers.json.next
+      - name: Upload configuration
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ssh_opts=(-i "$HOME/.ssh/id_ed25519" -o UserKnownHostsFile="$HOME/.ssh/known_hosts" -o StrictHostKeyChecking=yes -o BatchMode=yes)
+          ssh "${ssh_opts[@]}" "$VPS_USER@$VPS_HOST" 'mkdir -p /srv/apps/llmapi/deploy /srv/apps/llmapi/secrets /srv/apps/llmapi/backups'
+          scp "${ssh_opts[@]}" deploy/remote-deploy.sh "$VPS_USER@$VPS_HOST:/srv/apps/llmapi/deploy/remote-deploy.sh"
+          scp "${ssh_opts[@]}" .deploy-secrets/runtime.env.next "$VPS_USER@$VPS_HOST:/srv/apps/llmapi/secrets/runtime.env.next"
+          scp "${ssh_opts[@]}" .deploy-secrets/providers.json.next "$VPS_USER@$VPS_HOST:/srv/apps/llmapi/secrets/providers.json.next"
+          ssh "${ssh_opts[@]}" "$VPS_USER@$VPS_HOST" 'chmod 700 /srv/apps/llmapi/deploy/remote-deploy.sh && /srv/apps/llmapi/deploy/remote-deploy.sh config'

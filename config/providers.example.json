@@ -1,0 +1,22 @@
+[
+  {
+    "platform": "groq",
+    "label": "main",
+    "key": "gsk_replace_me",
+    "enabled": true
+  },
+  {
+    "platform": "custom",
+    "label": "private-endpoint",
+    "baseUrl": "http://model-server:8000/v1",
+    "key": "optional",
+    "enabled": true,
+    "models": [
+      {
+        "id": "model-id",
+        "supportsTools": true,
+        "supportsVision": false
+      }
+    ]
+  }
+]

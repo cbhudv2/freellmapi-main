@@ -1,14 +1,9 @@
 import crypto from 'crypto';
 import type { ChatMessage } from 'llmapi/types.js';
-import { getDb, getUnifiedApiKey } from '../db/index.js';
+import { getUnifiedApiKey } from '../db/index.js';
 
-// Per-client API keys with server-enforced system prompts (#411). A client
-// profile is a second kind of inference credential: it authenticates ONLY the
-// /v1 inference surface (proxy + responses), never the /api dashboard routes —
-// those require a dashboard session (middleware/requireAuth). The unified key
-// keeps today's behavior exactly: full inference access, no injected prompt.
-
-export const CLIENT_PROFILE_KEY_PREFIX = 'sk-cp-';
+// Protocol adapters still validate the unified key internally. The headless
+// app injects it for callers already trusted by the private network.
 
 // Constant-time string comparison for inference credentials. Plain `===` leaks
 // length and per-character timing, which a network attacker could in principle
@@ -24,57 +19,22 @@ export function timingSafeStringEqual(provided: string, expected: string): boole
   return crypto.timingSafeEqual(a, b);
 }
 
-export function mintClientProfileKey(): string {
-  return `${CLIENT_PROFILE_KEY_PREFIX}${crypto.randomBytes(24).toString('hex')}`;
-}
-
-// Profile keys are stored and looked up by SHA-256 digest, so the DB never
-// holds the plaintext for auth purposes (the encrypted copy exists only for
-// masked display in the dashboard). The digest also makes the indexed lookup
-// timing-independent of the secret's bytes.
-export function hashClientProfileKey(key: string): string {
-  return crypto.createHash('sha256').update(key).digest('hex');
-}
-
-export type ResolvedAuth =
-  | { kind: 'unified'; systemPrompt: null }
-  | { kind: 'profile'; profileId: number; name: string; systemPrompt: string | null };
-
-interface ProfileRow {
-  id: number;
-  name: string;
-  system_prompt: string | null;
-  enabled: number;
-}
+export type ResolvedAuth = { kind: 'unified'; systemPrompt: null };
 
 /**
- * Resolve an inference credential. The unified key maps to today's behavior
- * (no enforced prompt); a client-profile key carries its own prompt; a
- * disabled profile is rejected exactly like an unknown key so a revoked
- * client can't distinguish "disabled" from "deleted".
+ * Resolve the single internal inference credential.
  */
 export function resolveAuth(token: string | undefined): ResolvedAuth | null {
   if (!token) return null;
   if (timingSafeStringEqual(token, getUnifiedApiKey())) {
     return { kind: 'unified', systemPrompt: null };
   }
-  if (!token.startsWith(CLIENT_PROFILE_KEY_PREFIX)) return null;
-  const row = getDb().prepare(
-    'SELECT id, name, system_prompt, enabled FROM client_profiles WHERE token_hash = ?',
-  ).get(hashClientProfileKey(token)) as ProfileRow | undefined;
-  if (!row || !row.enabled) return null;
-  const prompt = row.system_prompt != null && row.system_prompt.trim().length > 0
-    ? row.system_prompt
-    : null;
-  return { kind: 'profile', profileId: row.id, name: row.name, systemPrompt: prompt };
+  return null;
 }
 
 /**
- * Prepend the server-enforced system prompt. It goes FIRST, ahead of any
- * caller-supplied system message, so the enforced instructions take priority
- * while the caller's own system message is preserved after it — the caller
- * can add context but cannot override or remove the profile's prompt.
- * An empty/null prompt is a neutral passthrough: nothing is injected.
+ * Preserve the protocol adapter contract. The headless router currently has
+ * no server-enforced prompt, so null is a neutral passthrough.
  */
 export function prependSystemPrompt(messages: ChatMessage[], prompt: string | null | undefined): ChatMessage[] {
   if (prompt == null || prompt.trim().length === 0) return messages;

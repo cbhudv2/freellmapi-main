@@ -1,46 +1,19 @@
 import { Router } from 'express';
-import type { NextFunction, Request, Response } from 'express';
+import type { Request, Response } from 'express';
 import { z } from 'zod';
 import type {
   ChatMessage,
   ChatToolDefinition,
 } from 'llmapi/types.js';
-import { isLoopbackRequest } from '../lib/loopback.js';
-import { getSetting, getUnifiedApiKey } from '../db/index.js';
+import { getUnifiedApiKey } from '../db/index.js';
 import { buildModelListing } from '../services/model-listing.js';
 import { extractApiToken, timingSafeStringEqual } from './proxy.js';
 import { runInboundChat, type InboundChatResult, type InboundChatWire } from '../lib/inbound-chat.js';
 import { runEmbeddings, embeddingsRetryAfterSec, EmbeddingsError } from '../services/embeddings.js';
-import { validateSession } from '../services/auth.js';
 
 export const ollamaRouter = Router();
 
-export type OllamaEmulationMode = 'off' | 'open-loopback' | 'key-required';
-
-export function getOllamaEmulationMode(): OllamaEmulationMode {
-  const stored = getSetting('ollama_emulation');
-  return stored === 'open-loopback' || stored === 'key-required' ? stored : 'off';
-}
-
-// The nearest proxy's hop decides, not the caller's: see lib/loopback.ts.
-export const isLoopback = (req: Request): boolean => isLoopbackRequest(req);
-
 function authorize(req: Request, res: Response): boolean {
-  if ((req as Request & { urlTokenAuthenticated?: boolean }).urlTokenAuthenticated) {
-    return true;
-  }
-  const mode = getOllamaEmulationMode();
-  if (mode === 'off') {
-    res.status(404).json({ error: 'Ollama emulation is disabled' });
-    return false;
-  }
-  if (mode === 'open-loopback') {
-    if (isLoopback(req)) return true;
-    res.status(403).json({
-      error: 'Ollama open-loopback mode only accepts connections from this machine',
-    });
-    return false;
-  }
   const token = extractApiToken(req);
   if (!token || !timingSafeStringEqual(token, getUnifiedApiKey())) {
     res.status(401).json({ error: 'Invalid API key' });

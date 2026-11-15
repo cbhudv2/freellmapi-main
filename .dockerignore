@@ -1,0 +1,13 @@
+.git
+.github
+node_modules
+dist
+data
+backups
+secrets
+src/__tests__
+.env
+.env.*
+*.db
+*.db-*
+npm-debug.log*
