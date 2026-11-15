@@ -23,7 +23,7 @@ jobs:
       ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
       DB_BACKUP_KEY: ${{ secrets.DB_BACKUP_KEY }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Prepare configuration
         shell: bash
         run: |
