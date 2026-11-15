@@ -41,6 +41,9 @@ describe('headless llmapi smoke test', () => {
     const providers = await fetch(`${baseUrl}/v1/providers`);
     expect(providers.status).toBe(200);
 
+    const ollamaVersion = await fetch(`${baseUrl}/api/version`);
+    expect(ollamaVersion.status).toBe(200);
+
     const removedAdminRoute = await fetch(`${baseUrl}/api/settings`);
     expect(removedAdminRoute.status).toBe(404);
   });

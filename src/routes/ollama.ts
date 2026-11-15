@@ -561,19 +561,4 @@ ollamaRouter.post('/api/embed', (req, res) => {
 // The dashboard already owns POST /api/embeddings. A valid dashboard session
 // always falls through to that router; otherwise this exact path is Ollama's
 // legacy embeddings endpoint and is governed by the emulation auth mode.
-ollamaRouter.post('/api/embeddings', (req: Request, res: Response, next: NextFunction) => {
-  const dashboardToken = req.headers.authorization?.replace(/^Bearer\s+/i, '')
-    ?? (req.headers['x-dashboard-token'] as string | undefined);
-  if (validateSession(dashboardToken)) {
-    next();
-    return;
-  }
-  // A stale dashboard session must still surface as 401 so the SPA's
-  // re-login flow triggers — unless the bearer could be a unified API key
-  // for key-required Ollama mode, which handleEmbed will verify itself.
-  if (dashboardToken && getOllamaEmulationMode() !== 'key-required') {
-    res.status(401).json({ error: { message: 'Authentication required', type: 'authentication_error' } });
-    return;
-  }
-  return handleEmbed(req, res, true);
-});
+ollamaRouter.post('/api/embeddings', (req: Request, res: Response) => handleEmbed(req, res, true));

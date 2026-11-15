@@ -104,7 +104,11 @@ export function createApp(config?: Config) {
   const limiter = createProxyRateLimiter(cfg.proxyRateLimitRpm);
 
   app.use((req, res, next) => {
-    if (!OLLAMA_PATHS.has(req.path)) return next();
+    if (!req.path.startsWith('/api/')) return next();
+    if (!OLLAMA_PATHS.has(req.path)) {
+      notFound(res);
+      return;
+    }
     limiter(req, res, () => networkAuthentication(req, res, next));
   });
   app.use(ollamaRouter);
