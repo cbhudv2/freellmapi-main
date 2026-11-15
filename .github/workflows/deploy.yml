@@ -76,7 +76,32 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          ssh_opts=(-i "$HOME/.ssh/id_ed25519" -o UserKnownHostsFile="$HOME/.ssh/known_hosts" -o StrictHostKeyChecking=yes -o BatchMode=yes)
+          control_path="$RUNNER_TEMP/llmapi-ssh-%C"
+          ssh_opts=(
+            -i "$HOME/.ssh/id_ed25519"
+            -o UserKnownHostsFile="$HOME/.ssh/known_hosts"
+            -o StrictHostKeyChecking=yes
+            -o BatchMode=yes
+            -o ConnectTimeout=20
+            -o ServerAliveInterval=15
+            -o ServerAliveCountMax=3
+            -o ControlMaster=auto
+            -o ControlPersist=120
+            -o ControlPath="$control_path"
+          )
+          connected=0
+          for attempt in 1 2 3; do
+            if ssh "${ssh_opts[@]}" -MNf "$VPS_USER@$VPS_HOST"; then
+              connected=1
+              break
+            fi
+            sleep $((attempt * 10))
+          done
+          if [[ "$connected" -ne 1 ]]; then
+            echo "Could not establish the deployment SSH connection after 3 attempts" >&2
+            exit 1
+          fi
+          trap 'ssh "${ssh_opts[@]}" -O exit "$VPS_USER@$VPS_HOST" >/dev/null 2>&1 || true' EXIT
           ssh "${ssh_opts[@]}" "$VPS_USER@$VPS_HOST" 'mkdir -p /srv/apps/llmapi/deploy /srv/apps/llmapi/secrets /srv/apps/llmapi/backups'
           scp "${ssh_opts[@]}" docker-compose.yml "$VPS_USER@$VPS_HOST:/srv/apps/llmapi/docker-compose.yml"
           scp "${ssh_opts[@]}" deploy/remote-deploy.sh "$VPS_USER@$VPS_HOST:/srv/apps/llmapi/deploy/remote-deploy.sh"
