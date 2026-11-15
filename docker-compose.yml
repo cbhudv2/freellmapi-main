@@ -24,7 +24,12 @@ services:
     volumes:
       - llmapi-data:/app/data
       - llmapi-backups:/app/backups
-      - ./secrets/providers.json:/run/secrets/providers.json:ro
+      - type: bind
+        source: ./secrets/providers.json
+        target: /run/secrets/providers.json
+        read_only: true
+        bind:
+          create_host_path: false
     networks:
       llm-internal:
         aliases: [llmapi]

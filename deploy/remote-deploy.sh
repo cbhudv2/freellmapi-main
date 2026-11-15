@@ -29,6 +29,15 @@ mkdir -p secrets
 chmod 700 secrets
 docker network inspect llm-internal >/dev/null 2>&1 || docker network create llm-internal >/dev/null
 
+# Short-form Compose bind mounts create a directory when their source file is
+# absent. Recover the exact malformed path left by an older failed deployment
+# without deleting it, then install the newly uploaded regular file below.
+if [[ -d secrets/providers.json ]]; then
+  quarantine="secrets/providers.json.invalid-directory.$(date -u +%Y%m%dT%H%M%SZ)"
+  mv -- secrets/providers.json "$quarantine"
+  echo "moved malformed provider-config directory to $quarantine" >&2
+fi
+
 if [[ -f .env ]]; then
   existing_id="$(docker compose ps -q llmapi 2>/dev/null || true)"
   if [[ -n "$existing_id" ]] \
@@ -47,6 +56,12 @@ had_providers=0
 [[ -f .env.next ]] && mv .env.next .env
 [[ -f secrets/runtime.env.next ]] && mv secrets/runtime.env.next secrets/runtime.env
 [[ -f secrets/providers.json.next ]] && mv secrets/providers.json.next secrets/providers.json
+for required_file in .env secrets/runtime.env secrets/providers.json; do
+  if [[ ! -f "$required_file" ]]; then
+    echo "required deployment file is missing or not a regular file: $required_file" >&2
+    exit 66
+  fi
+done
 chmod 600 .env secrets/runtime.env
 # The parent directory remains private on the host. The file is readable so
 # the unprivileged node user can access this read-only rootless bind mount.
